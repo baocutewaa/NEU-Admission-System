@@ -1,4 +1,7 @@
-enroll-insight-neu/
+## 📁 Project Structure
+
+```text
+NEU-Admission-System/
 ├── frontend/                         # React (Vite + TailwindCSS)
 │
 │
@@ -56,5 +59,5 @@ enroll-insight-neu/
 │   ├── migrations/                   # Các bản ghi thay đổi cấu trúc DB (Alembic)
 │   └── neu_admission.sql             # Script T-SQL gốc tạo cấu trúc bảng
 │
-├── .gitignore                        # Cấu hình bỏ qua các file rác, venv, .env khi push Git
-└── README.md                         # Tài liệu hướng dẫn cài đặt và mô tả dự án
+├── .gitignore                        
+└── README.md                         
