@@ -1,13 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import Any
+from typing import List
 
 from app.api.deps import get_db
 from app.crud.crud_analytics import analytics_crud
+from app.schemas.analytics import (
+    AdmissionOverview,
+    StatsByRegion,
+    StatsByMajor,
+    StatsByMethod,
+    MotivationAnalysis,
+    MajorClustering,
+    PreferenceMultivariate,
+)
 
 router = APIRouter()
 
-@router.get("/overview", response_model=Any)
+@router.get("/overview", response_model=AdmissionOverview)
 def get_admission_overview(
     nam_tuyen_sinh: int = Query(2024, description="Năm tuyển sinh cần thống kê"),
     db: Session = Depends(get_db)
@@ -19,7 +28,7 @@ def get_admission_overview(
     """
     return analytics_crud.get_admission_and_enrollment_rate(db, nam_tuyen_sinh=nam_tuyen_sinh)
 
-@router.get("/regions", response_model=Any)
+@router.get("/regions", response_model=List[StatsByRegion])
 def get_stats_by_region(
     nam_tuyen_sinh: int = Query(2024, description="Năm tuyển sinh cần thống kê"),
     db: Session = Depends(get_db)
@@ -29,7 +38,7 @@ def get_stats_by_region(
     """
     return analytics_crud.get_stats_by_region(db, nam_tuyen_sinh=nam_tuyen_sinh)
 
-@router.get("/majors", response_model=Any)
+@router.get("/majors", response_model=List[StatsByMajor])
 def get_stats_by_major(
     nam_tuyen_sinh: int = Query(2024, description="Năm tuyển sinh cần thống kê"),
     db: Session = Depends(get_db)
@@ -39,7 +48,7 @@ def get_stats_by_major(
     """
     return analytics_crud.get_stats_by_major(db, nam_tuyen_sinh=nam_tuyen_sinh)
 
-@router.get("/methods", response_model=Any)
+@router.get("/methods", response_model=List[StatsByMethod])
 def get_stats_by_method(
     nam_tuyen_sinh: int = Query(2024, description="Năm tuyển sinh cần thống kê"),
     db: Session = Depends(get_db)
@@ -49,7 +58,7 @@ def get_stats_by_method(
     """
     return analytics_crud.get_stats_by_admission_method(db, nam_tuyen_sinh=nam_tuyen_sinh)
 
-@router.get("/motivation", response_model=Any)
+@router.get("/motivation", response_model=MotivationAnalysis)
 def get_motivation_analysis(
     nam_tuyen_sinh: int = Query(2024, description="Năm tuyển sinh cần thống kê"),
     db: Session = Depends(get_db)
@@ -60,7 +69,7 @@ def get_motivation_analysis(
     """
     return analytics_crud.get_motivation_analysis(db, nam_tuyen_sinh=nam_tuyen_sinh)
 
-@router.get("/clustering", response_model=Any)
+@router.get("/clustering", response_model=List[MajorClustering])
 def get_major_clustering(
     nam_tuyen_sinh: int = Query(2024, description="Năm tuyển sinh cần thống kê"),
     limit: int = Query(10, description="Số lượng cặp ngành học"),
@@ -71,7 +80,7 @@ def get_major_clustering(
     """
     return analytics_crud.get_major_clustering(db, nam_tuyen_sinh=nam_tuyen_sinh, limit=limit)
 
-@router.get("/preference-multivariate", response_model=Any)
+@router.get("/preference-multivariate", response_model=List[PreferenceMultivariate])
 def get_preference_multivariate(
     nam_tuyen_sinh: int = Query(2024, description="Năm tuyển sinh cần thống kê"),
     db: Session = Depends(get_db)

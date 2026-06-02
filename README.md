@@ -61,3 +61,59 @@ NEU-Admission-System/
 │
 ├── .gitignore                        
 └── README.md                         
+
+---
+
+## ⚙️ Cấu hình kết nối Database (SQL Server)
+
+Backend đọc cấu hình từ file `backend/.env`. Tạo file này nếu chưa có.
+
+Ví dụ `.env`:
+
+```env
+DB_SERVER=(localdb)\MSSQLLocalDB
+DB_NAME=neu_tuyensinh
+DB_DRIVER=ODBC Driver 18 for SQL Server
+DB_USER=
+DB_PASSWORD=
+```
+
+Ghi chú:
+- Nếu dùng Windows Authentication (Trusted Connection), để trống `DB_USER` và `DB_PASSWORD`.
+- Nếu dùng SQL Login, điền `DB_USER` và `DB_PASSWORD`.
+- Cần cài `ODBC Driver 18 for SQL Server` (hoặc đổi `DB_DRIVER` đúng với driver đã cài).
+
+### Khởi tạo database
+
+1. Tạo database `neu_tuyensinh` trên SQL Server.
+2. Chạy script tạo bảng: `database/neu_admission.sql`.
+3. Chạy script tạo view: `database/vw_phan_tich_tuyensinh.sql`.
+4. (Tuỳ chọn) Chạy file `database/DataGenerate.py` để tạo script dữ liệu mẫu.
+5. (Tuỳ chọn) Chạy script dữ liệu mẫu: `DuLieuTuyenSinh_SQLServer.sql`.
+6. (Tuỳ chọn) Tạo view phân tích: `database/vw_phan_tich_tuyensinh.sql`.
+
+---
+
+## ▶️ Khởi chạy project
+
+### Backend (FastAPI)
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+```
+
+Truy cập API docs: http://127.0.0.1:8000/docs
+
+### Frontend (Vite + React)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Truy cập giao diện: http://localhost:5173
