@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from app.api.deps import get_db
 from app.crud.crud_analytics import analytics_crud
@@ -12,6 +12,9 @@ from app.schemas.analytics import (
     MotivationAnalysis,
     MajorClustering,
     PreferenceMultivariate,
+    AdvancedGenderStats,
+    GeoEnrollmentStats,
+    ScoreAnalyticsStats,
 )
 
 router = APIRouter()
@@ -90,3 +93,39 @@ def get_preference_multivariate(
     Thứ tự NV + Hành vi nhập học.
     """
     return analytics_crud.get_multivariate_preference_analysis(db, nam_tuyen_sinh=nam_tuyen_sinh)
+
+@router.get("/gender-distribution", response_model=List[AdvancedGenderStats])
+def get_advanced_gender_distribution(
+    nam_tuyen_sinh: int = Query(2024, description="Năm tuyển sinh cần thống kê"),
+    phuong_thuc: Optional[str] = Query(None, description="Lọc theo phương thức xét tuyển"),
+    db: Session = Depends(get_db)
+):
+    """
+    Phân bổ giới tính chuyên sâu
+    """
+    return analytics_crud.get_advanced_gender_distribution(db, nam_tuyen_sinh, phuong_thuc)
+
+@router.get("/geographic-enrollment", response_model=List[GeoEnrollmentStats])
+def get_geographic_enrollment_stats(
+    nam_tuyen_sinh: int = Query(2024, description="Năm tuyển sinh cần thống kê"),
+    phuong_thuc: Optional[str] = Query(None, description="Lọc theo phương thức xét tuyển"),
+    major_name: Optional[str] = Query(None, description="Lọc theo ngành học"),
+    db: Session = Depends(get_db)
+):
+    """
+    Bản đồ nhiệt tỉ lệ nhập học theo tỉnh/thành
+    """
+    return analytics_crud.get_geographic_enrollment_stats(db, nam_tuyen_sinh, phuong_thuc, major_name)
+
+@router.get("/score-analytics", response_model=List[ScoreAnalyticsStats])
+def get_score_analytics(
+    nam_tuyen_sinh: int = Query(2024, description="Năm tuyển sinh cần thống kê"),
+    phuong_thuc: Optional[str] = Query(None, description="Lọc theo phương thức xét tuyển"),
+    major_name: Optional[str] = Query(None, description="Lọc theo ngành học"),
+    db: Session = Depends(get_db)
+):
+    """
+    Phân tích điểm thi THPT toàn diện
+    """
+    return analytics_crud.get_score_analytics(db, nam_tuyen_sinh, phuong_thuc, major_name)
+

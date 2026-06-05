@@ -235,4 +235,194 @@ class CRUDAnalytics:
             } for row in stats
         ]
 
+    def get_advanced_gender_distribution(self, db: Session, nam_tuyen_sinh: int, phuong_thuc: str = None):
+        """
+        Advanced Gender Distribution with optional method filtering.
+        """
+        query = db.query(
+            Nganh.TenNganh,
+            ThiSinh.GioiTinh,
+            func.count(func.distinct(NguyenVong.CCCD)).label('applied'),
+            func.count(func.distinct(case((NguyenVong.TrangThai == u"Trúng tuyển", NguyenVong.CCCD), else_=None))).label('admitted'),
+        ).join(NguyenVong, Nganh.MaNganh == NguyenVong.MaNganh)\
+         .join(ThiSinh, ThiSinh.CCCD == NguyenVong.CCCD)\
+         .join(NhomXetTuyen, NhomXetTuyen.MaNhom == NguyenVong.MaNhom)\
+         .join(PhuongThuc, PhuongThuc.MaPT == NhomXetTuyen.MaPT)\
+         .filter(NguyenVong.NamTuyenSinh == nam_tuyen_sinh)
+         
+        if phuong_thuc:
+            query = query.filter(PhuongThuc.TenPhuongThuc == phuong_thuc)
+            
+        stats = query.group_by(Nganh.TenNganh, ThiSinh.GioiTinh).all()
+        
+        enrolled_query = db.query(
+            Nganh.TenNganh,
+            ThiSinh.GioiTinh,
+            func.count(func.distinct(HoSoNhapHoc.CCCD)).label('enrolled')
+        ).join(HoSoNhapHoc, Nganh.MaNganh == HoSoNhapHoc.MaNganh)\
+         .join(ThiSinh, ThiSinh.CCCD == HoSoNhapHoc.CCCD)\
+         .join(NhomXetTuyen, NhomXetTuyen.MaNhom == HoSoNhapHoc.MaNhom)\
+         .join(PhuongThuc, PhuongThuc.MaPT == NhomXetTuyen.MaPT)\
+         .filter(HoSoNhapHoc.NamTuyenSinh == nam_tuyen_sinh)
+         
+        if phuong_thuc:
+            enrolled_query = enrolled_query.filter(PhuongThuc.TenPhuongThuc == phuong_thuc)
+            
+        enrolled_stats = enrolled_query.group_by(Nganh.TenNganh, ThiSinh.GioiTinh).all()
+        
+        results_dict = {}
+        for row in stats:
+            major = row.TenNganh
+            gender = row.GioiTinh or "Khác"
+            if gender not in ["Nam", "Nữ"]: gender = "Khác"
+            
+            if major not in results_dict:
+                results_dict[major] = {
+                    "major_name": major,
+                    "nam_tuyen_sinh": nam_tuyen_sinh,
+                    "phuong_thuc": phuong_thuc,
+                    "male_applied": 0, "female_applied": 0, "other_applied": 0,
+                    "male_admitted": 0, "female_admitted": 0, "other_admitted": 0,
+                    "male_enrolled": 0, "female_enrolled": 0, "other_enrolled": 0,
+                }
+            
+            if gender == "Nam":
+                results_dict[major]["male_applied"] = row.applied
+                results_dict[major]["male_admitted"] = row.admitted
+            elif gender == "Nữ":
+                results_dict[major]["female_applied"] = row.applied
+                results_dict[major]["female_admitted"] = row.admitted
+            else:
+                results_dict[major]["other_applied"] = row.applied
+                results_dict[major]["other_admitted"] = row.admitted
+                
+        for row in enrolled_stats:
+            major = row.TenNganh
+            gender = row.GioiTinh or "Khác"
+            if gender not in ["Nam", "Nữ"]: gender = "Khác"
+            if major in results_dict:
+                if gender == "Nam": results_dict[major]["male_enrolled"] = row.enrolled
+                elif gender == "Nữ": results_dict[major]["female_enrolled"] = row.enrolled
+                else: results_dict[major]["other_enrolled"] = row.enrolled
+
+        return list(results_dict.values())
+
+    def get_geographic_enrollment_stats(self, db: Session, nam_tuyen_sinh: int, phuong_thuc: str = None, major_name: str = None):
+        """
+        Geographic Heatmap data.
+        """
+        query = db.query(
+            ThiSinh.HoKhauThuongTru.label("province"),
+            func.count(func.distinct(NguyenVong.CCCD)).label('applied'),
+            func.count(func.distinct(case((NguyenVong.TrangThai == u"Trúng tuyển", NguyenVong.CCCD), else_=None))).label('admitted'),
+        ).join(NguyenVong, ThiSinh.CCCD == NguyenVong.CCCD)\
+         .join(Nganh, Nganh.MaNganh == NguyenVong.MaNganh)\
+         .join(NhomXetTuyen, NhomXetTuyen.MaNhom == NguyenVong.MaNhom)\
+         .join(PhuongThuc, PhuongThuc.MaPT == NhomXetTuyen.MaPT)\
+         .filter(NguyenVong.NamTuyenSinh == nam_tuyen_sinh)
+         
+        if phuong_thuc:
+            query = query.filter(PhuongThuc.TenPhuongThuc == phuong_thuc)
+        if major_name:
+            query = query.filter(Nganh.TenNganh == major_name)
+            
+        stats = query.group_by(ThiSinh.HoKhauThuongTru).all()
+        
+        enrolled_query = db.query(
+            ThiSinh.HoKhauThuongTru.label("province"),
+            func.count(func.distinct(HoSoNhapHoc.CCCD)).label('enrolled')
+        ).join(HoSoNhapHoc, ThiSinh.CCCD == HoSoNhapHoc.CCCD)\
+         .join(Nganh, Nganh.MaNganh == HoSoNhapHoc.MaNganh)\
+         .join(NhomXetTuyen, NhomXetTuyen.MaNhom == HoSoNhapHoc.MaNhom)\
+         .join(PhuongThuc, PhuongThuc.MaPT == NhomXetTuyen.MaPT)\
+         .filter(HoSoNhapHoc.NamTuyenSinh == nam_tuyen_sinh)
+         
+        if phuong_thuc:
+            enrolled_query = enrolled_query.filter(PhuongThuc.TenPhuongThuc == phuong_thuc)
+        if major_name:
+            enrolled_query = enrolled_query.filter(Nganh.TenNganh == major_name)
+            
+        enrolled_stats = enrolled_query.group_by(ThiSinh.HoKhauThuongTru).all()
+        enrolled_dict = {row.province: row.enrolled for row in enrolled_stats}
+        
+        results = []
+        for row in stats:
+            province = row.province or "Không rõ"
+            enrolled = enrolled_dict.get(row.province, 0)
+            yield_rate = (enrolled / row.admitted * 100) if row.admitted > 0 else 0
+            results.append({
+                "province": province,
+                "nam_tuyen_sinh": nam_tuyen_sinh,
+                "phuong_thuc": phuong_thuc,
+                "major_name": major_name,
+                "total_applicants": row.applied,
+                "admitted_applicants": row.admitted,
+                "enrolled_applicants": enrolled,
+                "yield_rate": round(yield_rate, 2)
+            })
+            
+        return results
+
+    def get_score_analytics(self, db: Session, nam_tuyen_sinh: int, phuong_thuc: str = None, major_name: str = None):
+        """
+        Score Distribution Analytics.
+        """
+        from app.models.student import DiemThi
+        from app.models.admission import MonThi
+        import statistics
+
+        query = db.query(
+            MonThi.TenMon,
+            DiemThi.Diem
+        ).join(DiemThi, MonThi.MaMon == DiemThi.MaMon)\
+         .join(NguyenVong, NguyenVong.CCCD == DiemThi.CCCD)\
+         .join(Nganh, Nganh.MaNganh == NguyenVong.MaNganh)\
+         .join(NhomXetTuyen, NhomXetTuyen.MaNhom == NguyenVong.MaNhom)\
+         .join(PhuongThuc, PhuongThuc.MaPT == NhomXetTuyen.MaPT)\
+         .filter(NguyenVong.NamTuyenSinh == nam_tuyen_sinh, DiemThi.Diem != None)
+
+        if phuong_thuc:
+            query = query.filter(PhuongThuc.TenPhuongThuc == phuong_thuc)
+        if major_name:
+            query = query.filter(Nganh.TenNganh == major_name)
+            
+        raw_data = query.all()
+        
+        subject_scores = {}
+        for row in raw_data:
+            subj = row.TenMon
+            if subj not in subject_scores:
+                subject_scores[subj] = []
+            subject_scores[subj].append(row.Diem)
+            
+        results = []
+        for subj, scores in subject_scores.items():
+            if not scores: continue
+            
+            avg_s = sum(scores) / len(scores)
+            med_s = statistics.median(scores)
+            min_s = min(scores)
+            max_s = max(scores)
+            
+            brackets = { "<5": 0, "5-7": 0, "7-8": 0, "8-9": 0, "9-10": 0 }
+            for s in scores:
+                if s < 5: brackets["<5"] += 1
+                elif s < 7: brackets["5-7"] += 1
+                elif s < 8: brackets["7-8"] += 1
+                elif s < 9: brackets["8-9"] += 1
+                else: brackets["9-10"] += 1
+                
+            results.append({
+                "subject_name": subj,
+                "major_name": major_name,
+                "phuong_thuc": phuong_thuc,
+                "avg_score": round(avg_s, 2),
+                "median_score": round(med_s, 2),
+                "min_score": round(min_s, 2),
+                "max_score": round(max_s, 2),
+                "brackets": [{"bracket": k, "count": v} for k, v in brackets.items()]
+            })
+            
+        return results
+
 analytics_crud = CRUDAnalytics()
