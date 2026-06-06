@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel
 
@@ -81,3 +81,45 @@ class VwPhanTichTuyenSinhRead(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class AdvancedGenderStats(BaseModel):
+    major_name: str
+    nam_tuyen_sinh: int
+    phuong_thuc: Optional[str] = None
+    male_applied: int = 0
+    female_applied: int = 0
+    other_applied: int = 0
+    male_admitted: int = 0
+    female_admitted: int = 0
+    other_admitted: int = 0
+    male_enrolled: int = 0
+    female_enrolled: int = 0
+    other_enrolled: int = 0
+
+
+class GeoEnrollmentStats(BaseModel):
+    province: str
+    nam_tuyen_sinh: int
+    phuong_thuc: Optional[str] = None
+    major_name: Optional[str] = None
+    total_applicants: int = 0
+    admitted_applicants: int = 0
+    enrolled_applicants: int = 0
+    yield_rate: float = 0.0
+
+
+class ScoreBracket(BaseModel):
+    bracket: str
+    count: int
+
+
+class ScoreAnalyticsStats(BaseModel):
+    subject_name: str
+    major_name: Optional[str] = None
+    phuong_thuc: Optional[str] = None
+    avg_score: Optional[float] = None
+    median_score: Optional[float] = None
+    min_score: Optional[float] = None
+    max_score: Optional[float] = None
+    brackets: List[ScoreBracket]

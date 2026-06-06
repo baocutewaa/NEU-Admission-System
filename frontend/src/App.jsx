@@ -3,11 +3,17 @@ import ReactECharts from 'echarts-for-react';
 import { Users, UserCheck, GraduationCap, Calendar, TrendingUp, AlertCircle } from 'lucide-react';
 import { 
     fetchOverview, fetchRegions, fetchMajors, 
-    fetchMethods, fetchMotivation, fetchClustering, fetchPreferenceMultivariate 
+    fetchMethods, fetchMotivation, fetchClustering, fetchPreferenceMultivariate,
+    fetchGenderDistribution, fetchGeographicEnrollment, fetchScoreAnalytics
 } from './services/api';
+import GenderAnalyticsChart from './components/GenderAnalyticsChart';
+import GeoHeatmapChart from './components/GeoHeatmapChart';
+import ScoreBoxplotChart from './components/ScoreBoxplotChart';
 
 const App = () => {
     const [year, setYear] = useState(2024);
+    const [methodFilter, setMethodFilter] = useState('');
+    const [majorFilter, setMajorFilter] = useState('');
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [data, setData] = useState({
@@ -17,7 +23,10 @@ const App = () => {
         methods: [],
         motivation: null,
         clustering: [],
-        multivariate: []
+        multivariate: [],
+        gender: [],
+        geo: [],
+        scores: []
     });
 
     useEffect(() => {
@@ -27,7 +36,8 @@ const App = () => {
             try {
                 const [
                     overviewRes, regionsRes, majorsRes, 
-                    methodsRes, motivationRes, clusteringRes, multivariateRes
+                    methodsRes, motivationRes, clusteringRes, multivariateRes,
+                    genderRes, geoRes, scoreRes
                 ] = await Promise.all([
                     fetchOverview(year),
                     fetchRegions(year),
@@ -35,7 +45,10 @@ const App = () => {
                     fetchMethods(year),
                     fetchMotivation(year),
                     fetchClustering(year, 15),
-                    fetchPreferenceMultivariate(year)
+                    fetchPreferenceMultivariate(year),
+                    fetchGenderDistribution(year, methodFilter || null),
+                    fetchGeographicEnrollment(year, methodFilter || null, majorFilter || null),
+                    fetchScoreAnalytics(year, methodFilter || null, majorFilter || null)
                 ]);
 
                 setData({
@@ -45,7 +58,10 @@ const App = () => {
                     methods: methodsRes,
                     motivation: motivationRes,
                     clustering: clusteringRes,
-                    multivariate: multivariateRes
+                    multivariate: multivariateRes,
+                    gender: genderRes,
+                    geo: geoRes,
+                    scores: scoreRes
                 });
             } catch (err) {
                 console.error("Error fetching data:", err);
@@ -56,7 +72,7 @@ const App = () => {
         };
 
         loadData();
-    }, [year]);
+    }, [year, methodFilter, majorFilter]);
 
     // Common ECharts Theme settings to match our Dark Glassmorphism UI
     const chartTheme = {
@@ -256,13 +272,27 @@ const App = () => {
                     <GraduationCap size={32} />
                     NEU Admission Analytics
                 </div>
-                <div className="year-selector">
-                    <Calendar size={20} color="var(--text-muted)" />
-                    <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
-                        <option value={2023}>Năm 2023</option>
-                        <option value={2024}>Năm 2024</option>
-                        <option value={2025}>Năm 2025</option>
-                    </select>
+                <div className="filters-container" style={{ display: 'flex', gap: '15px' }}>
+                    <div className="filter-item">
+                        <select value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(30, 41, 59, 0.7)', color: '#f8fafc', border: '1px solid rgba(255, 255, 255, 0.1)', outline: 'none' }}>
+                            <option value="">Tất cả Phương thức</option>
+                            {data.methods && data.methods.map(m => <option key={m.method_name} value={m.method_name}>{m.method_name}</option>)}
+                        </select>
+                    </div>
+                    <div className="filter-item">
+                        <select value={majorFilter} onChange={(e) => setMajorFilter(e.target.value)} style={{ padding: '8px', borderRadius: '8px', backgroundColor: 'rgba(30, 41, 59, 0.7)', color: '#f8fafc', border: '1px solid rgba(255, 255, 255, 0.1)', outline: 'none', maxWidth: '200px' }}>
+                            <option value="">Tất cả Ngành</option>
+                            {data.majors && data.majors.map(m => <option key={m.major_name} value={m.major_name}>{m.major_name}</option>)}
+                        </select>
+                    </div>
+                    <div className="year-selector">
+                        <Calendar size={20} color="var(--text-muted)" />
+                        <select value={year} onChange={(e) => setYear(Number(e.target.value))}>
+                            <option value={2023}>Năm 2023</option>
+                            <option value={2024}>Năm 2024</option>
+                            <option value={2025}>Năm 2025</option>
+                        </select>
+                    </div>
                 </div>
             </header>
 
@@ -369,6 +399,39 @@ const App = () => {
                         </div>
                         <div className="chart-body">
                             <ReactECharts option={getClusteringGraphOption()} style={{ height: '100%', width: '100%' }} />
+                        </div>
+                    </div>
+
+                    {/* Advanced Gender Chart */}
+                    <div className="glass-panel chart-container col-span-12">
+                        <div className="chart-header">
+                            <h3 className="chart-title">Phân Bổ Giới Tính Chuyên Sâu</h3>
+                            <p className="chart-subtitle">Đăng ký & Tỉ lệ nhập học theo Giới tính</p>
+                        </div>
+                        <div className="chart-body" style={{ minHeight: '500px' }}>
+                            <GenderAnalyticsChart data={data.gender} theme={chartTheme} />
+                        </div>
+                    </div>
+
+                    {/* Geo Heatmap Chart */}
+                    <div className="glass-panel chart-container col-span-12">
+                        <div className="chart-header">
+                            <h3 className="chart-title">Bản Đồ Nhiệt Tỉ Lệ Nhập Học</h3>
+                            <p className="chart-subtitle">Phân bổ vùng miền trên lãnh thổ Việt Nam</p>
+                        </div>
+                        <div className="chart-body" style={{ minHeight: '600px' }}>
+                            <GeoHeatmapChart data={data.geo} theme={chartTheme} />
+                        </div>
+                    </div>
+
+                    {/* Score Analytics Chart */}
+                    <div className="glass-panel chart-container col-span-12">
+                        <div className="chart-header">
+                            <h3 className="chart-title">Phân Tích Phổ Điểm THPT</h3>
+                            <p className="chart-subtitle">Phân bổ phổ điểm, Điểm trung bình và Trung vị theo môn thi</p>
+                        </div>
+                        <div className="chart-body" style={{ minHeight: '400px' }}>
+                            <ScoreBoxplotChart data={data.scores} theme={chartTheme} />
                         </div>
                     </div>
 

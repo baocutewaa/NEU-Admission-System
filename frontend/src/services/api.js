@@ -37,3 +37,26 @@ export const fetchPreferenceMultivariate = async (year = 2024) => {
     const response = await axios.get(`${API_BASE_URL}/preference-multivariate?nam_tuyen_sinh=${year}`);
     return response.data;
 };
+
+export const fetchGenderDistribution = async (year = 2024, method = null) => {
+    let url = `${API_BASE_URL}/gender-distribution?nam_tuyen_sinh=${year}`;
+    if (method) url += `&phuong_thuc=${encodeURIComponent(method)}`;
+    const response = await axios.get(url);
+    return response.data;
+};
+
+export const fetchGeographicEnrollment = async (year = 2024, method = null, major = null) => {
+    let url = `${API_BASE_URL}/geographic-enrollment?nam_tuyen_sinh=${year}`;
+    if (method) url += `&phuong_thuc=${encodeURIComponent(method)}`;
+    if (major) url += `&major_name=${encodeURIComponent(major)}`;
+    const response = await axios.get(url);
+    return response.data;
+};
+
+export const fetchScoreAnalytics = async (year = 2024, method = null, major = null) => {
+    let url = `${API_BASE_URL}/score-analytics?nam_tuyen_sinh=${year}`;
+    if (method) url += `&phuong_thuc=${encodeURIComponent(method)}`;
+    if (major) url += `&major_name=${encodeURIComponent(major)}`;
+    const response = await axios.get(url);
+    return response.data;
+};
