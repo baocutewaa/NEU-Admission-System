@@ -189,7 +189,14 @@ def init_vector_stores(force_reindex: bool = True):
         if all_docs:
             text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
             split_docs = text_splitter.split_documents(all_docs)
-            docs_store.add_documents(split_docs)
-            print(f"Đã thêm {len(split_docs)} đoạn dữ liệu tài liệu vào vector store.")
+            
+            # Lọc bỏ các document rỗng để tránh lỗi ChromaDB
+            split_docs = [doc for doc in split_docs if doc.page_content.strip()]
+            
+            if split_docs:
+                docs_store.add_documents(split_docs)
+                print(f"Đã thêm {len(split_docs)} đoạn dữ liệu tài liệu vào vector store.")
+            else:
+                print("Các file tài liệu trống hoặc không chứa văn bản hợp lệ. Bỏ qua.")
     else:
         print("Docs index đã tồn tại. Bỏ qua khởi tạo lại.")
