@@ -6,3 +6,10 @@ pandas
 python-dotenv
 cryptography
 pyodbc
+langchain
+langchain-community
+langchain-experimental
+langchain-ollama
+chromadb
+sentence-transformers
+pypdf

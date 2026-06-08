@@ -44,14 +44,17 @@ NEU-Admission-System/
 │   │   │   └── analytics_schema.py   # Cấu trúc dữ liệu cho các biểu đồ thống kê
 │   │   │
 │   │   ├── core/                     # Settings
-│   │   │   ├── config.py             # Đọc file .env (DB URL, OpenAI/Gemini API Keys)
+│   │   │   ├── config.py             # Đọc file .env (DB URL, Ollama config)
 │   │   │   ├── database.py           # Khởi tạo SQLAlchemy Engine kết nối SQL Server
 │   │   │   └── security.py           # Quản lý xác thực JWT
 │   │   │
 │   │   └── main.py                   # Entry point khởi chạy FastAPI Server
 │   │
 │   ├── venv/                         # Virtual Environment
-│   ├── data_sources/                 # Kho lưu trữ tài liệu PDF/Docx quy chế tuyển sinh
+│   ├── data/                         # Kho lưu trữ tài liệu PDF/Docx + ChromaDB
+│   │   ├── chroma_db/                # Vector database (tự tạo khi khởi chạy)
+│   │   ├── neu_tuyensinh_schema.md   # Schema database chi tiết
+│   │   └── Đề án TSĐH năm 2025.pdf  # Đề án tuyển sinh (tài liệu RAG)
 │   ├── .env                          # Biến môi trường quan trọng
 │   └── requirements.txt              # Danh sách các thư viện Python cần thiết
 │
@@ -64,18 +67,96 @@ NEU-Admission-System/
 
 ---
 
+## 🤖 Cài đặt Ollama (LLM Local)
+
+Hệ thống sử dụng **Ollama** để chạy mô hình ngôn ngữ lớn (LLM) trực tiếp trên máy tính, hoàn toàn **miễn phí** và **không cần API key**.
+
+### 1. Tải và cài đặt Ollama
+
+Truy cập [https://ollama.com/download](https://ollama.com/download) và tải phiên bản phù hợp:
+
+| Hệ điều hành | Cách cài |
+|--------------|----------|
+| **Windows**  | Tải file `.exe` → chạy và cài đặt |
+| **macOS**    | Tải file `.dmg` hoặc `brew install ollama` |
+| **Linux**    | `curl -fsSL https://ollama.ai/install.sh \| sh` |
+
+Sau khi cài, kiểm tra:
+
+```bash
+ollama --version
+```
+
+### 2. Tải model LLM
+
+Hệ thống mặc định sử dụng `qwen2.5:7b` (4.7GB). Chạy lệnh sau để tải:
+
+```bash
+ollama pull qwen2.5:7b
+```
+
+**Lưu ý về phần cứng:**
+
+| Cấu hình máy              | Model khuyến nghị                   | RAM tối thiểu |
+|---------------------------|-------------------------------------|---------------|
+| Có GPU NVIDIA (≥6GB VRAM) | `qwen2.5:7b`                        | 8GB           |
+| Chỉ có CPU (≥6 cores)     | `qwen2.5:7b` hoặc `qwen2.5:3b`      | 8GB           |
+| Máy yếu (≤4 cores)        | `qwen2.5:3b`                        | 4GB           |
+
+Nếu máy yếu, dùng model nhỏ hơn:
+
+```bash
+ollama pull qwen2.5:3b
+```
+
+### 3. Khởi động Ollama
+
+Ollama thường tự chạy nền sau khi cài. Kiểm tra bằng:
+
+```bash
+ollama list
+```
+
+Nếu chưa chạy, khởi động thủ công:
+
+```bash
+ollama serve
+```
+
+Mặc định Ollama chạy tại `http://localhost:11434`.
+
+### 4. Cấu hình trong `.env`
+
+Thêm các biến sau vào file `backend/.env`:
+
+```env
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:7b
+EMBED_MODEL=BAAI/bge-m3
+```
+
+> **Lưu ý:** `EMBED_MODEL` là model embedding cho RAG (tự động tải lần đầu chạy, ~2.4GB). Không cần cài qua Ollama.
+
+---
+
 ## ⚙️ Cấu hình kết nối Database (SQL Server)
 
 Backend đọc cấu hình từ file `backend/.env`. Tạo file này nếu chưa có.
 
-Ví dụ `.env`:
+Ví dụ `.env` đầy đủ:
 
 ```env
+# Database
 DB_SERVER=(localdb)\MSSQLLocalDB
 DB_NAME=neu_tuyensinh
 DB_DRIVER=ODBC Driver 18 for SQL Server
 DB_USER=
 DB_PASSWORD=
+
+# Ollama LLM
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=qwen2.5:7b
+EMBED_MODEL=BAAI/bge-m3
 ```
 
 Ghi chú:
@@ -96,6 +177,14 @@ Ghi chú:
 
 ## ▶️ Khởi chạy project
 
+### Yêu cầu hệ thống
+
+- Python 3.10+
+- Node.js 18+
+- SQL Server (LocalDB hoặc full)
+- Ollama (đã cài và pull model)
+- RAM ≥ 8GB (khuyến nghị 16GB)
+
 ### Backend (FastAPI)
 
 ```bash
@@ -105,6 +194,8 @@ venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
+
+> Lần đầu khởi chạy sẽ **tự động tải embedding model** (~2.4GB) và **index tài liệu** vào ChromaDB. Quá trình này mất 2-5 phút.
 
 Truy cập API docs: http://127.0.0.1:8000/docs
 
@@ -117,3 +208,23 @@ npm run dev
 ```
 
 Truy cập giao diện: http://localhost:5173
+
+---
+
+## 🧪 Kiểm tra AI Chatbot
+
+Sau khi khởi chạy backend, mở Swagger UI tại http://127.0.0.1:8000/docs và test endpoint:
+
+```
+POST /api/v1/chat/query
+```
+
+Body mẫu:
+
+```json
+{
+  "question": "tìm ra 10 thí sinh có điểm thi môn toán cao nhất"
+}
+```
+
+Response sẽ trả về `answer` (câu trả lời), `sql` (câu SQL đã chạy), `columns`/`rows` (dữ liệu bảng).
