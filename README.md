@@ -127,7 +127,7 @@ Mặc định Ollama chạy tại `http://localhost:11434`.
 
 ### 4. Cấu hình trong `.env`
 
-Thêm các biến sau vào file `backend/.env`:
+Thêm các biến sau vào file `backend/.env.example`:
 
 ```env
 OLLAMA_BASE_URL=http://localhost:11434
@@ -141,7 +141,7 @@ EMBED_MODEL=BAAI/bge-m3
 
 ## ⚙️ Cấu hình kết nối Database (SQL Server)
 
-Backend đọc cấu hình từ file `backend/.env`. Tạo file này nếu chưa có.
+Backend đọc cấu hình từ file `backend/.env.example`. Tạo file này nếu chưa có.
 
 Ví dụ `.env` đầy đủ:
 
