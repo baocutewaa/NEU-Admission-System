@@ -4,4 +4,6 @@ data/
 node_modules/
 .env.local
 .env
-_pycache__/
+__pycache__/
+.vscode/
+*.py[cod]

@@ -1,21 +1,17 @@
-import React from 'react';
 import ReactECharts from 'echarts-for-react';
+import { getCountByBracket } from '../../utils/chartHelpers';
 
 const ScoreBoxplotChart = ({ data, theme }) => {
     if (!data || data.length === 0) return <div style={{ color: 'var(--text-muted)' }}>Không có dữ liệu điểm thi</div>;
 
     const subjects = data.map(d => d.subject_name);
     
-    // We have 5 brackets: "<5", "5-7", "7-8", "8-9", "9-10"
     const bracketKeys = ["<5", "5-7", "7-8", "8-9", "9-10"];
     const seriesData = bracketKeys.map(bk => ({
         name: bk,
         type: 'bar',
         stack: 'total',
-        data: data.map(d => {
-            const bracketObj = d.brackets.find(b => b.bracket === bk);
-            return bracketObj ? bracketObj.count : 0;
-        })
+        data: data.map(d => getCountByBracket(d.brackets, bk))
     }));
 
     const option = {
@@ -33,9 +29,9 @@ const ScoreBoxplotChart = ({ data, theme }) => {
                 const subjData = data.find(d => d.subject_name === params[0].axisValue);
                 if (subjData) {
                     res += `<hr style="margin:5px 0; border:0; border-top:1px solid rgba(255,255,255,0.2)"/>`;
-                    res += `Điểm trung bình: <strong style="color:#60a5fa">${subjData.avg_score}</strong><br/>`;
-                    res += `Trung vị (Median): <strong style="color:#34d399">${subjData.median_score}</strong><br/>`;
-                    res += `Min/Max: ${subjData.min_score} - ${subjData.max_score}`;
+                    res += `Điểm trung bình: <strong style="color:#60a5fa">${subjData.avg_score ?? 0}</strong><br/>`;
+                    res += `Trung vị (Median): <strong style="color:#34d399">${subjData.median_score ?? 0}</strong><br/>`;
+                    res += `Min/Max: ${subjData.min_score ?? 0} - ${subjData.max_score ?? 0}`;
                 }
                 return res;
             }
@@ -44,8 +40,18 @@ const ScoreBoxplotChart = ({ data, theme }) => {
             data: bracketKeys,
             textStyle: { color: '#94a3b8' }
         },
-        grid: { left: '3%', right: '4%', bottom: '3%', containLabel: true },
-        xAxis: { type: 'category', data: subjects },
+        // Tăng bottom từ 3% lên 15% để tạo không gian chứa các nhãn xoay nghiêng
+        grid: { left: '3%', right: '4%', bottom: '15%', containLabel: true },
+        xAxis: { 
+            type: 'category', 
+            data: subjects,
+            axisLabel: {
+                interval: 0,       // Hiển thị đầy đủ tất cả các môn, không ẩn bớt
+                rotate: 30,        // Xoay chữ nghiêng 30 độ chống đè dính nhau
+                width: 90,         // Giới hạn độ rộng tối đa của chữ môn học
+                overflow: 'truncate' // Tự động cắt ngắn thêm dấu "..." nếu tên môn quá dài
+            }
+        },
         yAxis: { type: 'value', name: 'Số lượng TS', splitLine: { lineStyle: { color: 'rgba(255,255,255,0.05)' } } },
         series: [
             ...seriesData.map((s, i) => ({

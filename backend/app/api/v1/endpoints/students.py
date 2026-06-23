@@ -1,15 +1,49 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from sqlalchemy.orm import Session
+from sqlalchemy import or_
 from app.schemas.student import StudentProfileResponse
 
 from app.api.deps import get_db
 from app.models.admission import Nganh
+from app.models.student import ThiSinh
 from app.crud.crud_student import student_crud
 from app.crud.crud_admission import admission_crud
 
 router = APIRouter()
 
+# ==========================================
+# ENDPOINT: /search
+# Hỗ trợ tìm kiếm danh sách thí sinh (Tên hoặc CCCD)
+# ==========================================
+@router.get("/search")
+def search_students(q: str = Query(..., description="Từ khóa tìm kiếm (Tên hoặc CCCD)"), db: Session = Depends(get_db)):
+    """
+    Tìm kiếm học sinh theo Tên hoặc CCCD.
+    Trả về danh sách rút gọn để hiển thị bảng.
+    """
+    results = db.query(ThiSinh).filter(
+        or_(
+            ThiSinh.HoTen.ilike(f"%{q}%"),
+            ThiSinh.CCCD.ilike(f"%{q}%")
+        )
+    ).limit(50).all()
+    
+    formatted_results = []
+    for student in results:
+        formatted_results.append({
+            "cccd": student.CCCD,
+            "ma_dinh_danh": student.CCCD,
+            "ho_ten": student.HoTen,
+            "gioi_tinh": student.GioiTinh
+        })
+        
+    return jsonable_encoder(formatted_results)
+
+# ==========================================
+# ENDPOINT: /{cccd}
+# Tra cứu hồ sơ chi tiết (File gốc của bạn)
+# ==========================================
 @router.get("/{cccd}", response_model=StudentProfileResponse)
 def get_student_profile(cccd: str, db: Session = Depends(get_db)):
     """

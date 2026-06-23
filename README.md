@@ -3,7 +3,41 @@
 ```text
 NEU-Admission-System/
 ├── frontend/                         # React (Vite + TailwindCSS)
-│
+│   ├── node_modules/
+│   ├── public/
+│   │   └── vietnam.json
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   │   ├── charts/
+│   │   │   │   ├── GenderAnalyticsChart.jsx
+│   │   │   │   ├── GeoHeatmapChart.jsx
+│   │   │   │   └── ScoreBoxplotChart.jsx
+│   │   │   └── common/
+│   │   │       ├── Navbar.jsx
+│   │   │       └── Sidebar.jsx
+│   │   ├── pages/
+│   │   │   ├── ChatBot.jsx
+│   │   │   ├── Dashboard.jsx
+│   │   │   └── StudentSearch.jsx
+│   │   ├── services/
+│   │   │   └── api.js
+│   │   ├── styles/
+│   │   │   ├── App.css
+│   │   │   └── index.css
+│   │   ├── utils/
+│   │   │   ├── chartHelpers.js
+│   │   │   ├── format.js
+│   │   │   └── storage.js
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   ├── .gitignore
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── README.md
+│   └── vite.config.js
 │
 │
 ├── backend/                          # FastAPI
