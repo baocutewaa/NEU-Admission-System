@@ -19,7 +19,7 @@ class CRUDAnalytics:
         admitted_applicants = db.query(func.count(func.distinct(NguyenVong.CCCD)))\
             .filter(
                 NguyenVong.NamTuyenSinh == nam_tuyen_sinh,
-                NguyenVong.TrangThai == u"Trúng tuyển"
+                NguyenVong.TrangThai.ilike(u"Trung tuyen")
             ).scalar() or 0
             
         # Enrolled applicants
@@ -46,18 +46,20 @@ class CRUDAnalytics:
         stats = db.query(
             Nganh.TenNganh,
             func.count(func.distinct(NguyenVong.CCCD)).label('total_applicants'),
-            func.count(func.distinct(case((NguyenVong.TrangThai == u"Trúng tuyển", NguyenVong.CCCD), else_=None))).label('admitted_applicants'),
+            func.count(func.distinct(case((NguyenVong.TrangThai.ilike(u"Trung tuyen"), NguyenVong.CCCD), else_=None))).label('admitted_applicants'),
         ).join(NguyenVong, Nganh.MaNganh == NguyenVong.MaNganh)\
          .filter(NguyenVong.NamTuyenSinh == nam_tuyen_sinh)\
          .group_by(Nganh.TenNganh).all()
          
         # For enrolled, we query HoSoNhapHoc
         enrolled_stats = db.query(
-            Nganh.TenNganh,
-            func.count(func.distinct(HoSoNhapHoc.CCCD)).label('enrolled_applicants')
-        ).join(HoSoNhapHoc, Nganh.MaNganh == HoSoNhapHoc.MaNganh)\
-         .filter(HoSoNhapHoc.NamTuyenSinh == nam_tuyen_sinh)\
-         .group_by(Nganh.TenNganh).all()
+        Nganh.TenNganh,
+        func.count(func.distinct(HoSoNhapHoc.CCCD)).label('enrolled_applicants')
+    ).join(HoSoNhapHoc, and_(
+        Nganh.MaNganh == HoSoNhapHoc.MaNganh, 
+        HoSoNhapHoc.NamTuyenSinh == nam_tuyen_sinh # Phải lọc kèm năm
+    ))\
+     .group_by(Nganh.TenNganh).all()
          
         enrolled_dict = {row.TenNganh: row.enrolled_applicants for row in enrolled_stats}
         
@@ -84,7 +86,7 @@ class CRUDAnalytics:
         stats = db.query(
             PhuongThuc.TenPhuongThuc,
             func.count(func.distinct(NguyenVong.CCCD)).label('total_applicants'),
-            func.count(func.distinct(case((NguyenVong.TrangThai == u"Trúng tuyển", NguyenVong.CCCD), else_=None))).label('admitted_applicants')
+            func.count(func.distinct(case((NguyenVong.TrangThai.ilike(u"Trung tuyen"), NguyenVong.CCCD), else_=None))).label('admitted_applicants')
         ).join(NhomXetTuyen, NhomXetTuyen.MaPT == PhuongThuc.MaPT)\
          .join(NguyenVong, NguyenVong.MaNhom == NhomXetTuyen.MaNhom)\
          .filter(NguyenVong.NamTuyenSinh == nam_tuyen_sinh)\
@@ -120,7 +122,7 @@ class CRUDAnalytics:
         stats = db.query(
             ThiSinh.HoKhauThuongTru,
             func.count(func.distinct(NguyenVong.CCCD)).label('total_applicants'),
-            func.count(func.distinct(case((NguyenVong.TrangThai == u"Trúng tuyển", NguyenVong.CCCD), else_=None))).label('admitted_applicants')
+            func.count(func.distinct(case((NguyenVong.TrangThai.ilike(u"Trung tuyen"), NguyenVong.CCCD), else_=None))).label('admitted_applicants')
         ).join(NguyenVong, NguyenVong.CCCD == ThiSinh.CCCD)\
          .filter(NguyenVong.NamTuyenSinh == nam_tuyen_sinh)\
          .group_by(ThiSinh.HoKhauThuongTru).all()
@@ -156,8 +158,8 @@ class CRUDAnalytics:
         stats = db.query(
             func.count(func.distinct(case((high_motivation_cond, NguyenVong.CCCD), else_=None))).label('high_motivation_applicants'),
             func.count(func.distinct(case((low_motivation_cond, NguyenVong.CCCD), else_=None))).label('low_motivation_applicants'),
-            func.count(func.distinct(case((and_(high_motivation_cond, NguyenVong.TrangThai == u"Trúng tuyển"), NguyenVong.CCCD), else_=None))).label('high_motivation_admitted'),
-            func.count(func.distinct(case((and_(low_motivation_cond, NguyenVong.TrangThai == u"Trúng tuyển"), NguyenVong.CCCD), else_=None))).label('low_motivation_admitted')
+            func.count(func.distinct(case((and_(high_motivation_cond, NguyenVong.TrangThai.ilike(u"Trung tuyen")), NguyenVong.CCCD), else_=None))).label('high_motivation_admitted'),
+            func.count(func.distinct(case((and_(low_motivation_cond, NguyenVong.TrangThai.ilike(u"Trung tuyen")), NguyenVong.CCCD), else_=None))).label('low_motivation_admitted')
         ).filter(NguyenVong.NamTuyenSinh == nam_tuyen_sinh).first()
         
         return {
@@ -204,27 +206,36 @@ class CRUDAnalytics:
     def get_multivariate_preference_analysis(self, db: Session, nam_tuyen_sinh: int):
         """
         Kết hợp Đa biến (Preference Analysis): 
-        Đánh giá mức độ yêu thích thông qua sự kết hợp của: Thứ tự NV + Hành vi nhập học.
-        (Chênh lệch điểm - Score gap bị bỏ qua do chưa có dữ liệu điểm chuẩn)
+        Sửa triệt để lỗi SQL Server bằng giải pháp Subquery nhằm loại bỏ tham số ẩn (?) trong GROUP BY.
         """
-        # Define high/low motivation
+        from sqlalchemy import and_, case, func
+
         is_high_nv = NguyenVong.ThuTuNguyenVong <= 3
-        is_enrolled = case((HoSoNhapHoc.CCCD != None, True), else_=False)
+        motivation_expr = case((is_high_nv, "High Motivation (NV1-3)"), else_="Low Motivation (NV>3)")
+        enrolled_expr = case((HoSoNhapHoc.CCCD != None, True), else_=False)
         
-        # We join NguyenVong with HoSoNhapHoc
-        stats = db.query(
-            case((is_high_nv, "High Motivation (NV1-3)"), else_="Low Motivation (NV>3)").label("motivation_group"),
-            is_enrolled.label("enrolled"),
-            func.count(func.distinct(NguyenVong.CCCD)).label("count")
+        # Bước 1: Đưa toàn bộ logic biểu thức phức tạp vào Subquery để định hình cột rõ ràng
+        subquery = db.query(
+            NguyenVong.CCCD.label("applicant_cccd"),
+            motivation_expr.label("motivation_group"),
+            enrolled_expr.label("enrolled")
         ).outerjoin(HoSoNhapHoc, and_(
             HoSoNhapHoc.CCCD == NguyenVong.CCCD,
             HoSoNhapHoc.MaNganh == NguyenVong.MaNganh,
             HoSoNhapHoc.NamTuyenSinh == NguyenVong.NamTuyenSinh
         )).filter(
             NguyenVong.NamTuyenSinh == nam_tuyen_sinh,
-            NguyenVong.TrangThai == u"Trúng tuyển"
+            NguyenVong.TrangThai.ilike(u"Trung tuyen")
+        ).subquery()
+        
+        # Bước 2: Truy vấn từ subquery, lúc này group_by chỉ là các cột thông thường nên SQL Server chạy mượt mà
+        stats = db.query(
+            subquery.c.motivation_group,
+            subquery.c.enrolled,
+            func.count(func.distinct(subquery.c.applicant_cccd)).label("count")
         ).group_by(
-            "motivation_group", "enrolled"
+            subquery.c.motivation_group,
+            subquery.c.enrolled
         ).all()
         
         return [
@@ -243,7 +254,7 @@ class CRUDAnalytics:
             Nganh.TenNganh,
             ThiSinh.GioiTinh,
             func.count(func.distinct(NguyenVong.CCCD)).label('applied'),
-            func.count(func.distinct(case((NguyenVong.TrangThai == u"Trúng tuyển", NguyenVong.CCCD), else_=None))).label('admitted'),
+            func.count(func.distinct(case((NguyenVong.TrangThai.ilike(u"Trung tuyen"), NguyenVong.CCCD), else_=None))).label('admitted'),
         ).join(NguyenVong, Nganh.MaNganh == NguyenVong.MaNganh)\
          .join(ThiSinh, ThiSinh.CCCD == NguyenVong.CCCD)\
          .join(NhomXetTuyen, NhomXetTuyen.MaNhom == NguyenVong.MaNhom)\
@@ -314,7 +325,7 @@ class CRUDAnalytics:
         query = db.query(
             ThiSinh.HoKhauThuongTru.label("province"),
             func.count(func.distinct(NguyenVong.CCCD)).label('applied'),
-            func.count(func.distinct(case((NguyenVong.TrangThai == u"Trúng tuyển", NguyenVong.CCCD), else_=None))).label('admitted'),
+            func.count(func.distinct(case((NguyenVong.TrangThai.ilike(u"Trung tuyen"), NguyenVong.CCCD), else_=None))).label('admitted'),
         ).join(NguyenVong, ThiSinh.CCCD == NguyenVong.CCCD)\
          .join(Nganh, Nganh.MaNganh == NguyenVong.MaNganh)\
          .join(NhomXetTuyen, NhomXetTuyen.MaNhom == NguyenVong.MaNhom)\

@@ -24,7 +24,7 @@ class AIAgentService:
         print("[AIAgent] Khởi tạo LLM và Vector Stores (chỉ chạy 1 lần)...")
         self.llm = OllamaLLM(
             base_url=os.getenv("OLLAMA_BASE_URL", "http://localhost:11434"),
-            model=os.getenv("OLLAMA_MODEL", "qwen2.5:7b"),
+            model=os.getenv("OLLAMA_MODEL", "qwen2.5:3b"),
             temperature=0.1,
             num_predict=512,   # Giới hạn output token → giảm thời gian inference
             num_thread=10,     # Tận dụng 10/12 logical processors
