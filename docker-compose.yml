@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: neu-db
+    environment:
+      - ACCEPT_EULA=Y
+      - MSSQL_SA_PASSWORD=YourStrong@Pass123
+      - MSSQL_PID=Developer
+    ports:
+      - "1433:1433"
+    healthcheck:
+      test: ["CMD", "/opt/mssql-tools/bin/sqlcmd", "-S", "localhost", "-U", "sa", "-P", "YourStrong@Pass123", "-Q", "SELECT 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  db-init:
+    image: mcr.microsoft.com/mssql-tools:latest
+    container_name: neu-db-init
+    environment:
+      - MSSQL_SA_PASSWORD=YourStrong@Pass123
+    volumes:
+      - ./database:/database
+    entrypoint: ["/bin/bash", "/database/init.sh"]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    build: ./backend
+    container_name: neu-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+      - DB_SERVER=db
+      - DB_NAME=neu_tuyensinh
+      - DB_DRIVER=ODBC Driver 18 for SQL Server
+      - DB_USER=sa
+      - DB_PASSWORD=YourStrong@Pass123
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      - OLLAMA_MODEL=qwen2.5:7b
+      - EMBED_MODEL=BAAI/bge-m3
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      db:
+        condition: service_healthy
+      db-init:
+        condition: service_completed_successfully
+
+  frontend:
+    build: ./frontend
+    container_name: neu-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
