@@ -60,15 +60,15 @@ const ChatBot = () => {
                             
                             {/* KHU VỰC HIỂN THỊ DEBUG SQL NẾU CÓ */}
                             {msg.debug && msg.debug.sql && (
-                                <details className="mt-2 text-xs bg-[rgba(255,255,255,0.05)] rounded p-2 text-gray-300 cursor-pointer border border-[rgba(255,255,255,0.1)]">
-                                    <summary className="font-semibold select-none text-blue-400">Xem câu lệnh truy vấn nội bộ (T-SQL)</summary>
-                                    <pre className="mt-2 p-2 bg-[#1e293b] text-[#4ade80] rounded overflow-x-auto whitespace-pre-wrap font-mono text-[11px]">
+                                <details className="chatbot-debug-details">
+                                    <summary className="chatbot-debug-summary">Xem câu lệnh truy vấn nội bộ (T-SQL)</summary>
+                                    <pre className="chatbot-debug-pre">
                                         {msg.debug.sql}
                                     </pre>
-                                    <div className="mt-2 flex gap-2">
-                                        <span className="bg-blue-900/50 text-blue-300 px-2 py-1 rounded">Số dòng kết quả: {msg.debug.rowCount}</span>
+                                    <div className="chatbot-debug-meta">
+                                        <span className="chatbot-debug-badge-blue">Số dòng kết quả: {msg.debug.rowCount}</span>
                                         {msg.debug.tables && msg.debug.tables.length > 0 && (
-                                            <span className="bg-purple-900/50 text-purple-300 px-2 py-1 rounded">Bảng: {msg.debug.tables.join(', ')}</span>
+                                            <span className="chatbot-debug-badge-purple">Bảng: {msg.debug.tables.join(', ')}</span>
                                         )}
                                     </div>
                                 </details>

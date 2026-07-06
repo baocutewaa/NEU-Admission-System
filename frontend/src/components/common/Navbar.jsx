@@ -3,7 +3,9 @@ import { useState, useEffect, useRef } from 'react';
 const Navbar = ({ 
     year, setYear, 
     methodFilter, setMethodFilter, 
-    majorFilter, setMajorFilter
+    majorFilter, setMajorFilter,
+    methodsData = [],
+    majorsData = []
 }) => {
     // Trạng thái quản lý menu nào đang mở: null, 'method', 'major', hoặc 'year'
     const [openMenu, setOpenMenu] = useState(null);
@@ -57,7 +59,15 @@ const Navbar = ({
                                 >
                                     Tất cả Phương thức
                                 </li>
-                            
+                                {methodsData.map((m, idx) => (
+                                    <li 
+                                        key={idx}
+                                        className="neu-dropdown-item"
+                                        onClick={() => { setMethodFilter(m.method_name); setOpenMenu(null); }}
+                                    >
+                                        {m.method_name}
+                                    </li>
+                                ))}
                             </ul>
                         )}
                     </div>
@@ -83,6 +93,15 @@ const Navbar = ({
                                 >
                                     Tất cả Ngành
                                 </li>
+                                {majorsData.map((m, idx) => (
+                                    <li 
+                                        key={idx}
+                                        className="neu-dropdown-item"
+                                        onClick={() => { setMajorFilter(m.major_name); setOpenMenu(null); }}
+                                    >
+                                        {m.major_name}
+                                    </li>
+                                ))}
                             </ul>
                         )}
                     </div>

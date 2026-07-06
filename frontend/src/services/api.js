@@ -132,3 +132,13 @@ export const askChatbotApi = async (query) => {
     const response = await axios.post(`${CHAT_API_URL}/query`, { question: query });
     return response.data;
 };
+
+export const fetchStudentDetailApi = async (cccd) => {
+    try {
+        const response = await axios.get(`${STUDENT_API_URL}/${encodeURIComponent(cccd)}`);
+        return response.data;
+    } catch (error) {
+        console.error("Lỗi hệ thống khi tải chi tiết học sinh:", error);
+        return null;
+    }
+};

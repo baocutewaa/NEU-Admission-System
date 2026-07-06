@@ -304,7 +304,7 @@ const Dashboard = ({ year, methodFilter, majorFilter }) => {
             
             {/* CẢNH BÁO NĂM DỮ LIỆU */}
             {year && parseInt(year) !== 2024 && (
-                <div className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 p-3 mb-6 rounded-lg text-sm">
+                <div className="neu-alert-warning">
                     <AlertTriangle size={18} />
                     <span>Lưu ý: Script giả lập dữ liệu (DataGenerate.py) hiện đang hardcode cho năm 2024. Các biểu đồ dưới đây có thể không có dữ liệu cho năm {year}.</span>
                 </div>
